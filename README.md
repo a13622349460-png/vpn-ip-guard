@@ -104,3 +104,13 @@ Reset local runtime configuration:
 ```bash
 npm run reset:config
 ```
+## License
+
+Copyright (c) 2026 a13622349460-png.
+
+This project is source-available for review, learning, and personal testing.
+
+Commercial use, redistribution, republishing, or modified distribution is not permitted without permission.
+## Feedback
+
+Bug reports and suggestions are welcome through GitHub Issues.
