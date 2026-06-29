@@ -1,0 +1,38 @@
+{
+  "name": "vpn-ip-guard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A small Windows desktop VPN/IP stability monitor.",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "dev:electron": "cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .",
+    "dev:all": "concurrently -k -n VITE,ELECTRON -c cyan,magenta \"npm:dev\" \"wait-on http://127.0.0.1:5173 && npm run dev:electron\"",
+    "build:preload": "esbuild src/preload/preload.ts --bundle --platform=node --target=node22 --format=cjs --external:electron --outfile=dist/preload/preload.js",
+    "build": "tsc -p tsconfig.node.json && npm run build:preload && vite build",
+    "start": "electron .",
+    "shortcut": "powershell -ExecutionPolicy Bypass -File scripts/create-desktop-shortcut.ps1",
+    "reset:config": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/reset-local-config.ps1",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.4.1",
+    "electron-store": "^10.0.1",
+    "vite": "^6.3.5",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "concurrently": "^9.2.0",
+    "cross-env": "^7.0.3",
+    "electron": "^36.4.0",
+    "esbuild": "^0.25.5",
+    "typescript": "^5.8.3",
+    "wait-on": "^8.0.3"
+  }
+}
