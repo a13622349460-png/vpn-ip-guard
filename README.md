@@ -117,13 +117,21 @@ npm run shortcut
 ```bash
 npm run reset:config
 ```
-## License
+
+## 许可 / License
 
 Copyright (c) 2026 a13622349460-png.
 
+本项目源码可用于查看、学习和个人测试。
+
 This project is source-available for review, learning, and personal testing.
 
+未经许可，不允许商业使用、重新分发、重新发布或分发修改版本。
+
 Commercial use, redistribution, republishing, or modified distribution is not permitted without permission.
-## Feedback
+
+## 反馈 / Feedback
+
+欢迎通过 GitHub Issues 提交 bug 报告和改进建议。
 
 Bug reports and suggestions are welcome through GitHub Issues.
