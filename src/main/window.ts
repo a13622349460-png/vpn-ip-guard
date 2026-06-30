@@ -45,7 +45,52 @@ export function createMainWindow(config: AppConfig): BrowserWindow {
   return window;
 }
 
+export function createMiniStatusWindow(config: AppConfig): BrowserWindow {
+  const window = new BrowserWindow({
+    width: 132,
+    height: 42,
+    minWidth: 112,
+    minHeight: 36,
+    show: false,
+    frame: false,
+    resizable: false,
+    movable: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    title: "VPN IP Guard Status",
+    backgroundColor: "#00000000",
+    transparent: true,
+    webPreferences: {
+      preload: path.join(__dirname, "../preload/preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  positionMiniStatusWindow(window, config);
+
+  if (process.env.VITE_DEV_SERVER_URL) {
+    void window.loadURL(`${process.env.VITE_DEV_SERVER_URL}?mini=1`);
+  } else {
+    void window.loadFile(path.join(__dirname, "../renderer/index.html"), { query: { mini: "1" } });
+  }
+
+  return window;
+}
+
 export function positionBottomRight(window: BrowserWindow): void {
+  const display = screen.getPrimaryDisplay();
+  const { width, height } = window.getBounds();
+  const { x, y, width: workWidth, height: workHeight } = display.workArea;
+  window.setPosition(x + workWidth - width - 18, y + workHeight - height - 18, false);
+}
+
+export function positionMiniStatusWindow(window: BrowserWindow, config: AppConfig): void {
+  if (config.miniStatusPosition) {
+    window.setPosition(config.miniStatusPosition.x, config.miniStatusPosition.y, false);
+    return;
+  }
+
   const display = screen.getPrimaryDisplay();
   const { width, height } = window.getBounds();
   const { x, y, width: workWidth, height: workHeight } = display.workArea;

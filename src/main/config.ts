@@ -1,5 +1,5 @@
 import Store from "electron-store";
-import type { AppConfig, BaselineEndpoint } from "../shared/types.js";
+import type { AppConfig, BaselineEndpoint, MiniStatusPosition, NotificationMode } from "../shared/types.js";
 
 type StoreSchema = {
   config: AppConfig;
@@ -7,7 +7,9 @@ type StoreSchema = {
 
 const defaultConfig: AppConfig = {
   alwaysOnTop: true,
-  baseline: null
+  baseline: null,
+  notificationMode: "normal",
+  miniStatusPosition: null
 };
 
 const store = new Store<StoreSchema>({
@@ -31,7 +33,27 @@ export function updateConfig(patch: Partial<AppConfig>): AppConfig {
 function normalizeConfig(config: AppConfig): AppConfig {
   return {
     alwaysOnTop: Boolean(config.alwaysOnTop),
-    baseline: normalizeBaseline(config.baseline)
+    baseline: normalizeBaseline(config.baseline),
+    notificationMode: normalizeNotificationMode(config.notificationMode),
+    miniStatusPosition: normalizeMiniStatusPosition(config.miniStatusPosition)
+  };
+}
+
+function normalizeNotificationMode(mode: NotificationMode | undefined): NotificationMode {
+  if (mode === "normal" || mode === "risk" || mode === "danger" || mode === "off") {
+    return mode;
+  }
+  return "normal";
+}
+
+function normalizeMiniStatusPosition(position: MiniStatusPosition | null | undefined): MiniStatusPosition | null {
+  if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) {
+    return null;
+  }
+
+  return {
+    x: Math.round(position.x),
+    y: Math.round(position.y)
   };
 }
 

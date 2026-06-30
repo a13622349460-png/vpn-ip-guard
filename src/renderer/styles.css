@@ -26,6 +26,13 @@ body {
   background: #101318;
 }
 
+html:has(.mini-status),
+body:has(.mini-status),
+#root:has(.mini-status) {
+  overflow: hidden;
+  background: transparent;
+}
+
 button,
 input {
   font: inherit;
@@ -64,6 +71,12 @@ input {
   font-weight: 700;
 }
 
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .status-dot {
   width: 9px;
   height: 9px;
@@ -95,6 +108,12 @@ input {
 .soft-button:hover,
 .secondary-button:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+.icon-button:focus,
+.icon-button:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .status-green {
@@ -294,6 +313,7 @@ input {
 
 .settings-row,
 .switch-row,
+.notification-row,
 .actions {
   display: flex;
   align-items: center;
@@ -360,6 +380,54 @@ input {
 .checks-count {
   margin-left: auto;
   color: #8d98a8;
+}
+
+.notification-row {
+  min-height: 30px;
+  color: #c7ced9;
+  font-size: 12px;
+}
+
+.notification-row > span {
+  flex: 0 0 auto;
+  color: #8d98a8;
+}
+
+.segment-control {
+  -webkit-app-region: no-drag;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.segment-control button {
+  min-width: 0;
+  height: 28px;
+  border: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  color: #aeb7c5;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.segment-control button:last-child {
+  border-right: 0;
+}
+
+.segment-control button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.segment-control button.active {
+  color: #101318;
+  background: var(--status);
+  font-weight: 800;
 }
 
 .toggle {
@@ -536,4 +604,75 @@ button:disabled {
   to {
     transform: rotate(360deg);
   }
+}
+
+.mini-status {
+  --mini-status: #25c26e;
+  -webkit-app-region: no-drag;
+  display: grid;
+  grid-template-columns: 14px 10px 1fr;
+  align-items: center;
+  gap: 9px;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0 13px 0 8px;
+  border: 1px solid color-mix(in srgb, var(--mini-status) 50%, rgba(255, 255, 255, 0.18));
+  border-radius: 999px;
+  color: #f6f7f9;
+  background: rgba(16, 19, 24, 0.94);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.mini-status:hover {
+  background: rgba(24, 28, 35, 0.96);
+}
+
+.mini-status:active,
+.mini-status.mini-dragging {
+  cursor: grabbing;
+}
+
+.mini-status strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 850;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-drag-handle {
+  -webkit-app-region: no-drag;
+  align-self: stretch;
+  border-radius: 999px;
+  cursor: inherit;
+}
+
+.mini-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--mini-status);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--mini-status) 18%, transparent);
+}
+
+.mini-safe {
+  --mini-status: #25c26e;
+}
+
+.mini-latency {
+  --mini-status: #c4d66a;
+}
+
+.mini-risk {
+  --mini-status: #f0b429;
+}
+
+.mini-danger {
+  --mini-status: #ef4444;
 }

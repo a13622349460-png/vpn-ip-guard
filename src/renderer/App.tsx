@@ -1,15 +1,21 @@
-import { EyeOff, RefreshCw, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
-import { Component, useEffect, useMemo, useState } from "react";
-import type { ErrorInfo, ReactNode } from "react";
-import type { IpGuardApi, MonitorSnapshot, RiskStatus } from "../shared/types";
-
-type DisplayStatus = "safe" | "latency" | "risk" | "danger";
+import { EyeOff, Minus, RefreshCw, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
+import { Component, useEffect, useMemo, useRef, useState } from "react";
+import type { ErrorInfo, PointerEvent, ReactNode } from "react";
+import { classifyDisplayStatus, getDisplayStatusTitle } from "../shared/displayStatus";
+import type { IpGuardApi, MonitorSnapshot, NotificationMode, RiskStatus } from "../shared/types";
 
 const statusText: Record<RiskStatus, string> = {
   green: "VPN 出口状态稳定",
   yellow: "网络风险提示：存在轻微波动",
   red: "开发工具连接质量异常"
 };
+
+const notificationModes: Array<{ value: NotificationMode; label: string }> = [
+  { value: "normal", label: "全部" },
+  { value: "risk", label: "风险" },
+  { value: "danger", label: "危险" },
+  { value: "off", label: "关闭" }
+];
 
 interface ErrorBoundaryState {
   error: Error | null;
@@ -36,9 +42,11 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 }
 
 export default function App() {
+  const isMini = new URLSearchParams(window.location.search).get("mini") === "1";
+
   return (
     <ErrorBoundary>
-      <GuardApp api={window.ipGuard} />
+      {isMini ? <MiniStatusApp api={window.ipGuard} /> : <GuardApp api={window.ipGuard} />}
     </ErrorBoundary>
   );
 }
@@ -92,7 +100,7 @@ function GuardApp({ api }: { api?: IpGuardApi }) {
   const subScores = snapshot?.metrics.subScores;
   const statusMessage = snapshot?.metrics.statusMessage ?? statusText[status];
   const displayStatus = classifyDisplayStatus(snapshot);
-  const statusTitle = getStatusTitle(displayStatus);
+  const statusTitle = getDisplayStatusTitle(displayStatus);
   const asnMismatch = Boolean(current?.asn && baseline?.asn && current.asn !== baseline.asn);
 
   const stableText = useMemo(() => {
@@ -145,6 +153,18 @@ function GuardApp({ api }: { api?: IpGuardApi }) {
     }
   }
 
+  async function updateNotificationMode(notificationMode: NotificationMode) {
+    if (!api || !snapshot) {
+      return;
+    }
+    try {
+      setSnapshot(await api.updateConfig({ notificationMode }));
+      setError(null);
+    } catch (nextError) {
+      setError(getErrorMessage(nextError));
+    }
+  }
+
   async function hideToTray() {
     if (!api) {
       return;
@@ -167,9 +187,14 @@ function GuardApp({ api }: { api?: IpGuardApi }) {
           <span className="status-dot" />
           <span>VPN IP Guard</span>
         </div>
-        <button className="icon-button" type="button" onClick={hideToTray} title="隐藏到托盘">
-          <EyeOff size={17} />
-        </button>
+        <div className="window-controls">
+          <button className="icon-button" type="button" onMouseDown={(event) => event.preventDefault()} onClick={hideToTray} title="隐藏到托盘">
+            <Minus size={17} />
+          </button>
+          <button className="icon-button" type="button" onMouseDown={(event) => event.preventDefault()} onClick={hideToTray} title="隐藏到托盘">
+            <EyeOff size={17} />
+          </button>
+        </div>
       </section>
 
       {error ? <section className="error-banner">{error}</section> : null}
@@ -225,6 +250,22 @@ function GuardApp({ api }: { api?: IpGuardApi }) {
           <span className="checks-count">{checksCount} 条历史</span>
         </section>
 
+        <section className="notification-row" aria-label="通知模式">
+          <span>通知</span>
+          <div className="segment-control">
+            {notificationModes.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                className={(snapshot?.config.notificationMode ?? "normal") === item.value ? "active" : undefined}
+                onClick={() => updateNotificationMode(item.value)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
         {warningReasons.length > 0 || normalReasons.length > 0 ? (
           <section className="reasons">
             {warningReasons.length > 0 ? <ReasonGroup title="异常 / 警告项" items={warningReasons} tone="warning" /> : null}
@@ -264,6 +305,138 @@ function ReasonGroup({ title, items, tone }: { title: string; items: string[]; t
   );
 }
 
+function MiniStatusApp({ api }: { api?: IpGuardApi }) {
+  const [snapshot, setSnapshot] = useState<MonitorSnapshot | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const pointerState = useRef<{ pointerId: number; startX: number; startY: number; dragging: boolean } | null>(null);
+  const suppressDoubleClickUntil = useRef(0);
+
+  useEffect(() => {
+    if (!api) {
+      return;
+    }
+
+    let disposed = false;
+    void api
+      .getSnapshot()
+      .then((next) => {
+        if (!disposed) {
+          setSnapshot(next);
+        }
+      })
+      .catch((nextError: unknown) => {
+        if (!disposed) {
+          setError(getErrorMessage(nextError));
+        }
+      });
+
+    const unsubscribe = api.onSnapshot((next) => {
+      setSnapshot(next);
+      setError(null);
+    });
+
+    return () => {
+      disposed = true;
+      unsubscribe();
+    };
+  }, [api]);
+
+  async function showMainWindow() {
+    if (Date.now() < suppressDoubleClickUntil.current) {
+      return;
+    }
+
+    try {
+      await api?.showMainWindow();
+    } catch (nextError) {
+      setError(getErrorMessage(nextError));
+    }
+  }
+
+  function handlePointerDown(event: PointerEvent<HTMLElement>) {
+    if (!api || event.button !== 0) {
+      return;
+    }
+
+    pointerState.current = {
+      pointerId: event.pointerId,
+      startX: event.screenX,
+      startY: event.screenY,
+      dragging: false
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    api.miniDragStart(event.screenX, event.screenY);
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLElement>) {
+    const current = pointerState.current;
+    if (!api || !current || current.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const deltaX = event.screenX - current.startX;
+    const deltaY = event.screenY - current.startY;
+    const distance = Math.hypot(deltaX, deltaY);
+    if (!current.dragging && distance <= 4) {
+      return;
+    }
+
+    if (!current.dragging) {
+      current.dragging = true;
+      setIsDragging(true);
+    }
+
+    api.miniDragMove(event.screenX, event.screenY);
+  }
+
+  function handlePointerUp(event: PointerEvent<HTMLElement>) {
+    finishDrag(event);
+  }
+
+  function handlePointerCancel(event: PointerEvent<HTMLElement>) {
+    finishDrag(event);
+  }
+
+  function finishDrag(event: PointerEvent<HTMLElement>) {
+    const current = pointerState.current;
+    if (!api || !current || current.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (current.dragging) {
+      suppressDoubleClickUntil.current = Date.now() + 250;
+    }
+
+    api.miniDragEnd();
+    pointerState.current = null;
+    setIsDragging(false);
+  }
+
+  const displayStatus = classifyDisplayStatus(snapshot);
+  const label = error ? "异常" : getDisplayStatusTitle(displayStatus);
+
+  return (
+    <main
+      className={`mini-status mini-${displayStatus}${isDragging ? " mini-dragging" : ""}`}
+      onDoubleClick={showMainWindow}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      title="双击显示主窗口"
+    >
+      <span className="mini-drag-handle" aria-hidden="true" />
+      <span className="mini-dot" />
+      <strong>{label}</strong>
+    </main>
+  );
+}
+
 function ScoreItem({ label, value }: { label: string; value: number }) {
   return (
     <div className="score-item">
@@ -299,61 +472,6 @@ function DebugScreen({ message, details }: { message: string; details?: string }
       {details ? <section className="error-banner">{details}</section> : null}
     </main>
   );
-}
-
-function classifyDisplayStatus(snapshot: MonitorSnapshot | null): DisplayStatus {
-  if (!snapshot?.current) {
-    return "safe";
-  }
-
-  const { current, metrics } = snapshot;
-  const baseline = metrics.baseline ?? snapshot.config.baseline;
-  const hasLatencyIssue = typeof metrics.averageLatencyMs === "number" && metrics.averageLatencyMs > 600;
-  const hasDriftIssue = Boolean(
-    metrics.countryChangedFromBaseline ||
-      metrics.ipChanges5m > 0 ||
-      metrics.asnChanges5m > 0 ||
-      (baseline && current.ok && current.countryCode?.toUpperCase() !== baseline.country) ||
-      (baseline?.asn && current.asn && current.asn !== baseline.asn)
-  );
-  const hasSevereIssue = Boolean(
-    metrics.status === "red" ||
-      metrics.consecutiveTimeouts >= 2 ||
-      metrics.failureRate10 > 0.3 ||
-      metrics.ipChanges5m >= 3 ||
-      metrics.asnChanges5m >= 2 ||
-      (baseline && current.ok && current.countryCode?.toUpperCase() !== baseline.country)
-  );
-
-  if (hasSevereIssue) {
-    return "danger";
-  }
-
-  if (hasDriftIssue) {
-    return "risk";
-  }
-
-  if (hasLatencyIssue) {
-    return "latency";
-  }
-
-  return "safe";
-}
-
-function getStatusTitle(status: DisplayStatus): string {
-  if (status === "safe") {
-    return "安全";
-  }
-
-  if (status === "danger") {
-    return "危险";
-  }
-
-  if (status === "latency") {
-    return "延迟";
-  }
-
-  return "风险";
 }
 
 function Metric({

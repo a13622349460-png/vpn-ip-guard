@@ -1,4 +1,11 @@
 export type RiskStatus = "green" | "yellow" | "red";
+export type DisplayStatus = "safe" | "latency" | "risk" | "danger";
+export type NotificationMode = "normal" | "risk" | "danger" | "off";
+
+export interface MiniStatusPosition {
+  x: number;
+  y: number;
+}
 
 export interface BaselineEndpoint {
   ip: string;
@@ -12,6 +19,8 @@ export interface BaselineEndpoint {
 export interface AppConfig {
   alwaysOnTop: boolean;
   baseline: BaselineEndpoint | null;
+  notificationMode: NotificationMode;
+  miniStatusPosition: MiniStatusPosition | null;
 }
 
 export interface ProbeResult {
@@ -73,6 +82,12 @@ export interface IpGuardApi {
   resetAndCheckNow: () => Promise<MonitorSnapshot>;
   updateConfig: (patch: Partial<AppConfig>) => Promise<MonitorSnapshot>;
   hideToTray: () => Promise<void>;
+  showMainWindow: () => Promise<void>;
+  hideMiniStatus: () => Promise<void>;
+  quitApp: () => Promise<void>;
+  miniDragStart: (screenX: number, screenY: number) => void;
+  miniDragMove: (screenX: number, screenY: number) => void;
+  miniDragEnd: () => void;
   onSnapshot: (callback: (snapshot: MonitorSnapshot) => void) => () => void;
 }
 

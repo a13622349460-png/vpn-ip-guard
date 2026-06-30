@@ -2,17 +2,23 @@ import { app, BrowserWindow, Menu, Tray, nativeImage } from "electron";
 import path from "node:path";
 import type { RiskStatus } from "../shared/types.js";
 
+interface TrayActions {
+  showMainWindow: () => void;
+  hideToTray: () => void;
+  quitApp: () => void;
+}
+
 const trayIconFiles: Record<RiskStatus, string> = {
   green: "tray-green.ico",
   yellow: "tray-yellow.ico",
   red: "tray-red.ico"
 };
 
-export function createStatusTray(window: BrowserWindow, status: RiskStatus): Tray {
+export function createStatusTray(window: BrowserWindow, status: RiskStatus, actions: TrayActions): Tray {
   const tray = new Tray(createTrayIcon(status));
   tray.setToolTip("VPN IP Guard");
-  tray.setContextMenu(createTrayMenu(window));
-  tray.on("click", () => toggleWindow(window));
+  tray.setContextMenu(createTrayMenu(actions));
+  tray.on("click", () => toggleWindow(window, actions));
   return tray;
 }
 
@@ -25,37 +31,30 @@ export function updateTrayStatus(tray: Tray | null, status: RiskStatus): void {
   tray.setToolTip(`VPN IP Guard: ${status.toUpperCase()}`);
 }
 
-function createTrayMenu(window: BrowserWindow): Menu {
+function createTrayMenu(actions: TrayActions): Menu {
   return Menu.buildFromTemplate([
     {
-      label: "Show",
-      click: () => {
-        window.show();
-        window.focus();
-      }
+      label: "显示主窗口",
+      click: actions.showMainWindow
     },
     {
-      label: "Hide to tray",
-      click: () => window.hide()
+      label: "隐藏到托盘",
+      click: actions.hideToTray
     },
     { type: "separator" },
     {
-      label: "Quit",
-      click: () => {
-        window.destroy();
-        process.exit(0);
-      }
+      label: "退出",
+      click: actions.quitApp
     }
   ]);
 }
 
-function toggleWindow(window: BrowserWindow): void {
+function toggleWindow(window: BrowserWindow, actions: TrayActions): void {
   if (window.isVisible()) {
-    window.hide();
+    actions.hideToTray();
     return;
   }
-  window.show();
-  window.focus();
+  actions.showMainWindow();
 }
 
 function createTrayIcon(status: RiskStatus): Electron.NativeImage {
